@@ -1,67 +1,56 @@
-apiVersion: 1.0.0
-metadata:
-  name: dotnet-demo-signalr-chat
-projects:
-  - name: SignalRChat
-    source:
-      location: 'https://github.com/rhsgsa/SignalRChat.git'
-      type: git
-      branch: main
-components:
-  - id: redhat-developer/che-omnisharp-plugin/latest
-    memoryLimit: 1024Mi
-    type: chePlugin
-    alias: omnisharp
-  - id: redhat-developer/netcoredbg-theia-plugin/latest
-    memoryLimit: 512Mi
-    type: chePlugin
-    alias: netcoredbg
-  - mountSources: true
-    endpoints:
-      - name: web-endpoint
-        port: 5000
-    memoryLimit: 512Mi
-    type: dockerimage
-    volumes:
-      - name: nuget
-        containerPath: /home/jboss/.nuget
-    alias: dotnet
-    image: 'registry.redhat.io/codeready-workspaces/stacks-dotnet-rhel8@sha256:5107465c45e0cb15655ab35cc7297efe6fd43d8c1d8d337f785fb9e315257da2'
 commands:
-  - name: 3. Run
-    actions:
-      - workdir: '${CHE_PROJECTS_ROOT}/SignalRChat'
-        type: exec
-        command: dotnet run
-        component: dotnet
-  - name: 1. Update dependencies
-    actions:
-      - workdir: '${CHE_PROJECTS_ROOT}/SignalRChat'
-        type: exec
-        command: dotnet restore
-        component: dotnet
-  - name: 2. Build
-    actions:
-      - workdir: '${CHE_PROJECTS_ROOT}/SignalRChat'
-        type: exec
-        command: dotnet build
-        component: dotnet
-  - name: Launch .net web application in debug mode
-    actions:
-      - referenceContent: |
-          {
-            "version": "0.2.0",
-              "configurations": [
-                 {
-                    "type": "netcoredbg",
-                    "request": "launch",
-                    "program": "/projects/SignalRChat/bin/Debug/net5.0/SignalRChat.dll",
-                    "args": [],
-                    "name": ".NET Core Launch (console)",
-                    "stopAtEntry": true,
-                    "preLaunchTask": "2. Build",
-                    "console": "internalConsole"
-                  }
-              ]
-          }
-        type: vscode-launch
+- exec:
+    commandLine: /opt/odo/bin/s2i-setup && /opt/odo/bin/assemble-and-restart
+    component: s2i-builder
+    group:
+      isDefault: true
+      kind: build
+  id: s2i-assemble
+- exec:
+    commandLine: /opt/odo/bin/run
+    component: s2i-builder
+    group:
+      isDefault: true
+      kind: run
+  id: s2i-run
+- exec:
+    commandLine: /opt/odo/bin/run
+    component: s2i-builder
+    group:
+      isDefault: true
+      kind: debug
+  id: s2i-debug
+components:
+- container:
+    endpoints:
+    - name: http-8080
+      targetPort: 8080
+    env:
+    - name: DEBUG_PORT
+      value: "5858"
+    - name: ODO_S2I_SCRIPTS_URL
+      value: /usr/libexec/s2i
+    - name: ODO_S2I_SCRIPTS_PROTOCOL
+      value: image://
+    - name: ODO_S2I_SRC_BIN_PATH
+      value: /tmp
+    - name: ODO_S2I_DEPLOYMENT_DIR
+      value: /opt/app-root/src
+    - name: ODO_S2I_WORKING_DIR
+      value: /opt/app-root/src
+    - name: ODO_S2I_BUILDER_IMG
+      value: ubi8/dotnet-50
+    - name: ODO_SRC_BACKUP_DIR
+      value: /opt/app-root/src-backup
+    - name: ODO_S2I_CONVERTED_DEVFILE
+      value: "true"
+    image: registry.access.redhat.com/ubi8/dotnet-50
+    mountSources: true
+    sourceMapping: /tmp/projects
+  name: s2i-builder
+metadata:
+  language: dotnet:5.0-ubi8
+  name: signalr
+  projectType: dotnet:5.0-ubi8
+  version: 1.0.0
+schemaVersion: 2.0.0
