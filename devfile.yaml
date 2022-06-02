@@ -30,19 +30,19 @@ components:
 commands:
   - name: 3. Run
     actions:
-      - workdir: '${CHE_PROJECTS_ROOT}/SignalRChat'
+      - workdir: '${CHE_PROJECTS_ROOT}/signalrchat'
         type: exec
         command: dotnet run
         component: dotnet
   - name: 1. Update dependencies
     actions:
-      - workdir: '${CHE_PROJECTS_ROOT}/SignalRChat'
+      - workdir: '${CHE_PROJECTS_ROOT}/signalrchat'
         type: exec
         command: dotnet restore
         component: dotnet
   - name: 2. Build
     actions:
-      - workdir: '${CHE_PROJECTS_ROOT}/SignalRChat'
+      - workdir: '${CHE_PROJECTS_ROOT}/signalrchat'
         type: exec
         command: dotnet build
         component: dotnet
@@ -55,7 +55,7 @@ commands:
                  {
                     "type": "netcoredbg",
                     "request": "launch",
-                    "program": "/projects/SignalRChat/bin/Debug/net5.0/SignalRChat.dll",
+                    "program": "/projects/SignalRChat/bin/Debug/net5.0/signalrchat.dll",
                     "args": [],
                     "name": ".NET Core Launch (console)",
                     "stopAtEntry": true,
