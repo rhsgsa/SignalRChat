@@ -1,67 +1,70 @@
-apiVersion: 1.0.0
+schemaVersion: 2.1.0
 metadata:
-  name: dotnet-demo-signalr-chat
+  name: dotnet
 projects:
-  - name: SignalRChat
-    source:
-      location: 'https://github.com/rhsgsa/SignalRChat.git'
-      type: git
-      branch: main
+  - git:
+      remotes:
+        origin: 'https://github.com/rhsgsa/SignalRChat.git'
+    name: SignalRChat
 components:
-  - id: redhat-developer/che-omnisharp-plugin/latest
-    memoryLimit: 1024Mi
-    type: chePlugin
-    alias: omnisharp
-  - id: redhat-developer/netcoredbg-theia-plugin/latest
-    memoryLimit: 512Mi
-    type: chePlugin
-    alias: netcoredbg
-  - mountSources: true
-    endpoints:
-      - name: web-endpoint
-        port: 5000
-    memoryLimit: 512Mi
-    type: dockerimage
-    volumes:
-      - name: nuget
-        containerPath: /home/jboss/.nuget
-    alias: dotnet
-    image: 'registry.redhat.io/codeready-workspaces/stacks-dotnet-rhel8@sha256:5107465c45e0cb15655ab35cc7297efe6fd43d8c1d8d337f785fb9e315257da2'
+  - attributes:
+      app.kubernetes.io/name: tools
+      che-theia.eclipse.org/vscode-extensions: []
+    container:
+      args:
+        - sh
+        - '-c'
+        - '${PLUGIN_REMOTE_ENDPOINT_EXECUTABLE}'
+      endpoints:
+        - exposure: public
+          name: hello-endpoint
+          protocol: http
+          targetPort: 5032
+      env:
+        - name: PLUGIN_REMOTE_ENDPOINT_EXECUTABLE
+          value: /remote-endpoint/plugin-remote-endpoint
+        - name: THEIA_PLUGINS
+          value: 'local-dir:///plugins/sidecars/tools'
+        - name: CHE_DASHBOARD_URL
+          value: 'https://devspaces.apps.cluster-wm8kr.wm8kr.sandbox782.opentlc.com'
+        - name: CHE_PLUGIN_REGISTRY_URL
+          value: 'https://devspaces.apps.cluster-wm8kr.wm8kr.sandbox782.opentlc.com/plugin-registry/v3'
+        - name: CHE_PLUGIN_REGISTRY_INTERNAL_URL
+          value: 'http://plugin-registry.openshift-operators.svc:8080/v3'
+      image: 'registry.redhat.io/devspaces/udi-rhel8:3.2'
+      memoryLimit: 2Gi
+      mountSources: true
+      sourceMapping: /projects
+      volumeMounts:
+        - name: nuget
+          path: /home/user/.nuget
+        - name: remote-endpoint
+          path: /remote-endpoint
+        - name: plugins
+          path: /plugins
+    name: tools
+  - name: nuget
+    volume:
+      size: 1G
 commands:
-  - name: 3. Run
-    actions:
-      - workdir: '${CHE_PROJECTS_ROOT}/SignalRChat'
-        type: exec
-        command: dotnet run
-        component: dotnet
-  - name: 1. Update dependencies
-    actions:
-      - workdir: '${CHE_PROJECTS_ROOT}/SignalRChat'
-        type: exec
-        command: dotnet restore
-        component: dotnet
-  - name: 2. Build
-    actions:
-      - workdir: '${CHE_PROJECTS_ROOT}/SignalRChat'
-        type: exec
-        command: dotnet build
-        component: dotnet
-  - name: Launch .net web application in debug mode
-    actions:
-      - referenceContent: |
-          {
-            "version": "0.2.0",
-              "configurations": [
-                 {
-                    "type": "netcoredbg",
-                    "request": "launch",
-                    "program": "/projects/SignalRChat/bin/Debug/net5.0/SignalRChat.dll",
-                    "args": [],
-                    "name": ".NET Core Launch (console)",
-                    "stopAtEntry": true,
-                    "preLaunchTask": "2. Build",
-                    "console": "internalConsole"
-                  }
-              ]
-          }
-        type: vscode-launch
+  - exec:
+      commandLine: dotnet restore
+      component: tools
+      group:
+        kind: build
+      workingDir: '${PROJECTS_ROOT}/dotnet-web-simple'
+    id: 1-update-dependencies
+  - exec:
+      commandLine: dotnet build
+      component: tools
+      group:
+        kind: build
+      workingDir: '${PROJECTS_ROOT}/dotnet-web-simple'
+    id: 2-build
+  - exec:
+      commandLine: dotnet run
+      component: tools
+      group:
+        kind: run
+      workingDir: '${PROJECTS_ROOT}/dotnet-web-simple'
+    id: 3-run
