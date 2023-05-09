@@ -1,56 +1,60 @@
-commands:
-- exec:
-    commandLine: /opt/odo/bin/s2i-setup && /opt/odo/bin/assemble-and-restart
-    component: s2i-builder
-    group:
-      isDefault: true
-      kind: build
-  id: s2i-assemble
-- exec:
-    commandLine: /opt/odo/bin/run
-    component: s2i-builder
-    group:
-      isDefault: true
-      kind: run
-  id: s2i-run
-- exec:
-    commandLine: /opt/odo/bin/run
-    component: s2i-builder
-    group:
-      isDefault: true
-      kind: debug
-  id: s2i-debug
-components:
-- container:
-    endpoints:
-    - name: http-8080
-      targetPort: 8080
-    env:
-    - name: DEBUG_PORT
-      value: "5858"
-    - name: ODO_S2I_SCRIPTS_URL
-      value: /usr/libexec/s2i
-    - name: ODO_S2I_SCRIPTS_PROTOCOL
-      value: image://
-    - name: ODO_S2I_SRC_BIN_PATH
-      value: /tmp
-    - name: ODO_S2I_DEPLOYMENT_DIR
-      value: /opt/app-root/src
-    - name: ODO_S2I_WORKING_DIR
-      value: /opt/app-root/src
-    - name: ODO_S2I_BUILDER_IMG
-      value: ubi8/dotnet-50
-    - name: ODO_SRC_BACKUP_DIR
-      value: /opt/app-root/src-backup
-    - name: ODO_S2I_CONVERTED_DEVFILE
-      value: "true"
-    image: registry.access.redhat.com/ubi8/dotnet-50
-    mountSources: true
-    sourceMapping: /tmp/projects
-  name: s2i-builder
+schemaVersion: 2.1.0
 metadata:
-  language: dotnet:5.0-ubi8
-  name: signalr
-  projectType: dotnet:5.0-ubi8
-  version: 1.0.0
-schemaVersion: 2.0.0
+  name: devspace-demo
+projects:
+  - git:
+      remotes:
+        origin: 'https://github.com/kahlai/SignalRChat.git'
+    name: signalr-demo
+components:
+  - name: tools
+    container:
+      image: quay.io/kahlai/dotnet-devspaces-ws:latest
+      memoryLimit: 3Gi
+      endpoints:
+        - exposure: public
+          name: api
+          protocol: http
+          targetPort: 5000
+        - exposure: public
+          name: client
+          protocol: http
+          targetPort: 3000
+      volumeMounts:
+        - name: nuget
+          path: /home/user/.nuget
+        - name: dotnet
+          path: /home/user/.dotnet
+
+  - name: nuget
+    volume:
+      size: 1G
+
+  - name: dotnet
+    volume:
+      size: 1G
+
+commands:
+  - id: install-cake
+    exec:
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: dotnet tool install -g Cake.Tool
+      group:
+        kind: build
+
+  - id: build
+    exec:
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: dotnet run -p build/build.csproj
+      group:
+        kind: build
+
+  - id: run-server
+    exec:
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: dotnet run --project src/Conduit/Conduit.csproj
+      group:
+        kind: run
